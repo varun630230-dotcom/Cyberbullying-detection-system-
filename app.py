@@ -4,7 +4,6 @@ import json
 import logging
 import zipfile
 from pathlib import Path
-from urllib.parse import quote, unquote
 
 from fastapi import FastAPI, File, Form, Query, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, StreamingResponse
@@ -62,6 +61,18 @@ def flash(request: Request, message: str, category: str = "info") -> None:
 def get_flashed_messages(request: Request) -> list[dict]:
     """Pop all flash messages from the session."""
     return request.session.pop("_flashes", [])
+
+
+# ---------------------------------------------------------------------------
+# Template helper – avoids the "unhashable type: dict" Jinja2 cache bug
+# ---------------------------------------------------------------------------
+
+def render(request: Request, template_name: str, context: dict) -> HTMLResponse:
+    """Render a Jinja2 template, working around Starlette/Jinja2 cache-key issues."""
+    template = templates.env.get_template(template_name)
+    context["request"] = request
+    html = template.render(context)
+    return HTMLResponse(html)
 
 
 # ---------------------------------------------------------------------------
@@ -146,18 +157,14 @@ async def index(request: Request):
         {"label": "High risk", "value": severity_counts.get("High", 0)},
         {"label": "Average confidence", "value": f"{average_confidence * 100:.1f}%"},
     ]
-    return templates.TemplateResponse(
-        "index.html",
-        {
-            "request": request,
-            "overview_cards": overview_cards,
-            "total_messages": total_messages,
-            "severity_counts": severity_counts,
-            "average_confidence": average_confidence,
-            "flashed_messages": get_flashed_messages(request),
-            "result": None,
-        },
-    )
+    return render(request, "index.html", {
+        "overview_cards": overview_cards,
+        "total_messages": total_messages,
+        "severity_counts": severity_counts,
+        "average_confidence": average_confidence,
+        "flashed_messages": get_flashed_messages(request),
+        "result": None,
+    })
 
 
 @app.post("/predict", response_class=HTMLResponse)
@@ -188,39 +195,31 @@ async def predict(request: Request, message: str = Form("")):
         {"label": "Average confidence", "value": f"{average_confidence * 100:.1f}%"},
     ]
 
-    return templates.TemplateResponse(
-        "index.html",
-        {
-            "request": request,
-            "overview_cards": overview_cards,
-            "total_messages": total_messages,
-            "severity_counts": severity_counts,
-            "average_confidence": average_confidence,
-            "flashed_messages": [],
-            "result": {
-                "message": message,
-                "predicted_category": result["predicted_category"],
-                "severity": result["severity"],
-                "confidence": round(result["confidence"] * 100, 2),
-                "suggestion": result["suggestion"],
-                "explanation": result["explanation"],
-                "overridden": result["overridden"],
-            },
+    return render(request, "index.html", {
+        "overview_cards": overview_cards,
+        "total_messages": total_messages,
+        "severity_counts": severity_counts,
+        "average_confidence": average_confidence,
+        "flashed_messages": [],
+        "result": {
+            "message": message,
+            "predicted_category": result["predicted_category"],
+            "severity": result["severity"],
+            "confidence": round(result["confidence"] * 100, 2),
+            "suggestion": result["suggestion"],
+            "explanation": result["explanation"],
+            "overridden": result["overridden"],
         },
-    )
+    })
 
 
 @app.get("/bulk", response_class=HTMLResponse)
 async def bulk_analysis_get(request: Request):
-    return templates.TemplateResponse(
-        "bulk.html",
-        {
-            "request": request,
-            "results": None,
-            "summary": None,
-            "flashed_messages": get_flashed_messages(request),
-        },
-    )
+    return render(request, "bulk.html", {
+        "results": None,
+        "summary": None,
+        "flashed_messages": get_flashed_messages(request),
+    })
 
 
 @app.post("/bulk", response_class=HTMLResponse)
@@ -294,15 +293,11 @@ async def bulk_analysis_post(request: Request, file: UploadFile = File(None)):
     if error_message:
         flashed.append({"category": "error", "message": error_message})
 
-    return templates.TemplateResponse(
-        "bulk.html",
-        {
-            "request": request,
-            "results": results,
-            "summary": summary,
-            "flashed_messages": flashed,
-        },
-    )
+    return render(request, "bulk.html", {
+        "results": results,
+        "summary": summary,
+        "flashed_messages": flashed,
+    })
 
 
 @app.get("/dashboard", response_class=HTMLResponse)
@@ -328,25 +323,21 @@ async def dashboard(
     category_chart_labels = list(category_counts.keys())
     category_chart_values = list(category_counts.values())
     total_messages = sum(severity_counts.values())
-    return templates.TemplateResponse(
-        "dashboard.html",
-        {
-            "request": request,
-            "results": results,
-            "severity_counts": severity_counts,
-            "category_counts": category_counts,
-            "total_messages": total_messages,
-            "average_confidence": average_confidence,
-            "severity_chart_labels": severity_chart_labels,
-            "severity_chart_values": severity_chart_values,
-            "category_chart_labels": category_chart_labels,
-            "category_chart_values": category_chart_values,
-            "current_severity": severity,
-            "current_search": search,
-            "current_review_status": review_status,
-            "performance_metrics": load_performance_metrics(),
-        },
-    )
+    return render(request, "dashboard.html", {
+        "results": results,
+        "severity_counts": severity_counts,
+        "category_counts": category_counts,
+        "total_messages": total_messages,
+        "average_confidence": average_confidence,
+        "severity_chart_labels": severity_chart_labels,
+        "severity_chart_values": severity_chart_values,
+        "category_chart_labels": category_chart_labels,
+        "category_chart_values": category_chart_values,
+        "current_severity": severity,
+        "current_search": search,
+        "current_review_status": review_status,
+        "performance_metrics": load_performance_metrics(),
+    })
 
 
 @app.post("/review/{result_id}")
@@ -396,19 +387,15 @@ async def report(request: Request):
     highest_severity = max(severity_counts.items(), key=lambda item: item[1])[0] if severity_counts else "No data"
     top_category = max(category_counts.items(), key=lambda item: item[1])[0] if category_counts else "No data"
 
-    return templates.TemplateResponse(
-        "report.html",
-        {
-            "request": request,
-            "total_messages": total_messages,
-            "average_confidence": average_confidence,
-            "severity_counts": severity_counts,
-            "category_counts": category_counts,
-            "recent_results": recent_results,
-            "highest_severity": highest_severity,
-            "top_category": top_category,
-        },
-    )
+    return render(request, "report.html", {
+        "total_messages": total_messages,
+        "average_confidence": average_confidence,
+        "severity_counts": severity_counts,
+        "category_counts": category_counts,
+        "recent_results": recent_results,
+        "highest_severity": highest_severity,
+        "top_category": top_category,
+    })
 
 
 if __name__ == "__main__":
