@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Project Report</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
     <main class="page-shell report-page">
@@ -15,8 +15,8 @@
                 <p class="lead">A compact report view with key counts, dominant patterns, and the latest detection history.</p>
             </div>
             <div class="header-actions">
-                <a class="secondary-link" href="{{ url_for('dashboard') }}">Back to dashboard</a>
-                <a class="secondary-link" href="{{ url_for('index') }}">Back to analyzer</a>
+                <a class="secondary-link" href="/dashboard">Back to dashboard</a>
+                <a class="secondary-link" href="/">Back to analyzer</a>
             </div>
         </section>
 

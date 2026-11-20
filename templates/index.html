@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cyberbullying Detection Studio</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
     <main class="page-shell landing-page">
@@ -14,8 +14,8 @@
                 <h1>Detect harmful text, rank severity, and review the evidence.</h1>
             </div>
             <div class="topbar-actions">
-                <a class="secondary-link" href="{{ url_for('bulk_analysis') }}">Bulk analysis</a>
-                <a class="secondary-link" href="{{ url_for('dashboard') }}">Open dashboard</a>
+                <a class="secondary-link" href="/bulk">Bulk analysis</a>
+                <a class="secondary-link" href="/dashboard">Open dashboard</a>
             </div>
         </header>
 
@@ -41,7 +41,7 @@
             </div>
 
             <div class="analysis-card">
-                <form action="{{ url_for('predict') }}" method="post" class="analysis-form" id="analysis-form">
+                <form action="/predict" method="post" class="analysis-form" id="analysis-form">
                     <div class="field-header">
                         <label for="message">Message</label>
                         <span id="char-count">0 characters</span>
@@ -53,15 +53,13 @@
                     </div>
                 </form>
 
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                        <div class="flash-stack">
-                            {% for category, message in messages %}
-                                <div class="flash {{ category }}">{{ message }}</div>
-                            {% endfor %}
-                        </div>
-                    {% endif %}
-                {% endwith %}
+                {% if flashed_messages %}
+                    <div class="flash-stack">
+                        {% for flash in flashed_messages %}
+                            <div class="flash {{ flash.category }}">{{ flash.message }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
 
                 {% if result %}
                     <section class="result-panel result-panel-active">
@@ -102,6 +100,6 @@
             </div>
         </section>
     </main>
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="/static/js/app.js"></script>
 </body>
 </html>
